@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebRTC Chat App</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <h2>WebRTC Chat 5</h2>
+    <div>
+        <input type="text" id="localId" placeholder="Your ID">
+        <input type="text" id="remoteId" placeholder="Friend's ID">
+        <button id="createOffer">Create Offer</button>
+        <button id="createAnswer">Create Answer</button>
+        <button id="startChat">Start Chat</button>
+    </div>
+    <textarea id="messages" rows="10" cols="30" placeholder="Messages"></textarea>
+    <input type="text" id="newMessage" placeholder="New message">
+    <button id="sendMessage">Send Message</button>
+
+    <script src="chat.js"></script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Simple WebRTC Project</title>
+
+    <style>
+        .content {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        video {
+            height: 25rem;
+            width: auto;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.2.1/axios.min.js"></script>
+</head>
+<body>
+    <div class="content">
+        <h1>WEBRTC POC</h1>
+        <video playsinline autoplay loop muted id="localVideo" autoplay muted></video>
+        <video playsinline autoplay loop muted id="remoteVideo" autoplay></video>
+
+        <!-- <script type="module">
+            import { io } from "https://cdn.socket.io/4.7.4/socket.io.esm.min.js";
+
+            const socket = io('https://192.168.1.6:3000'); // Connect to your signaling server
+            const configuration = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+            const peerConnection = new RTCPeerConnection(configuration);
+
+            // Send any ice candidates to the other peer
+            peerConnection.onicecandidate = ({ candidate }) => {
+                if (candidate) {
+                    socket.emit('candidate', candidate);
+                }
+            };
+
+            // Let the "negotiationneeded" event trigger offer generation
+                peerConnection.onnegotiationneeded = async () => {
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                socket.emit('offer', offer);
+            };
+
+            // Handle incoming data on the data channel
+            peerConnection.ondatachannel = event => {
+                const channel = event.channel;
+                channel.onmessage = e => console.log('Message from peer:', e.data);
+                channel.onopen = () => console.log('Channel opened');
+                channel.onclose = () => console.log('Channel closed');
+            };
+
+            // Creating a data channel
+            const dataChannel = peerConnection.createDataChannel("chat");
+
+                dataChannel.onopen = event => {
+                dataChannel.send("Hello from Client!");
+            };
+
+            // Listen for remote offers
+            socket.on('offer', async (offer) => {
+                if (!peerConnection.currentRemoteDescription && !peerConnection.localDescription) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    socket.emit('answer', answer);
+                }
+            });
+
+            // Listen for remote answers
+            socket.on('answer', async (answer) => {
+                if (!peerConnection.currentRemoteDescription) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(answer));
+                }
+            });
+
+            // Listen for remote ICE candidates
+            socket.on('candidate', async (candidate) => {
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+                } catch (e) {
+                    console.error('Error adding received ice candidate', e);
+                }
+            });
+
+        </script> -->
+
+        <script type="module">
+            const BaseUrl = 'https://192.168.1.6:3000'
+            import { io } from "https://cdn.socket.io/4.7.4/socket.io.esm.min.js"
+
+            
+            initializePeerConnection()
+            let peerConnection
+
+            function initializePeerConnection() {
+                peerConnection = new RTCPeerConnection()
+
+                // update connection
+                peerConnection.onicecandidate = ({ candidate }) => {
+                    if (candidate) {
+                        socket.emit('candidate', candidate);
+                        axios.post(BaseUrl+'/update/onicecandidate', candidate)
+
+                    }
+                }
+
+                // Add all local tracks to the peer connection
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                // Listen for remote track
+                peerConnection.ontrack = event => {
+                    remoteVideo.srcObject = event.streams[0];
+                }
+
+                // Create offer if this is the initiating peer
+                if (location.hash === '#init') {
+                        console.log('setting connection')
+                        peerConnection.createOffer().then(offer => {
+                        return peerConnection.setLocalDescription(offer);
+                    }).then(() => {
+                        // Send the offer to the remote peer through the signaling server
+                        socket.emit('signal', { 
+                            type: 'offer', 
+                            offer: peerConnection.localDescription 
+                        });
+                    }).catch(console.error);
+                }
+            }
+        </script>
+
+        <!-- <script type="module">
+            import { io } from "https://cdn.socket.io/4.7.4/socket.io.esm.min.js";
+          
+            const socket = io('https://192.168.1.6:3000');
+            const localVideo = document.getElementById('localVideo');
+            const remoteVideo = document.getElementById('remoteVideo');
+            let localStream;
+            let peerConnection;
+
+            const configuration = {
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+            };
+
+            navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+            .then(stream => {
+                localStream = stream;
+                localVideo.srcObject = stream;
+
+                // Initialize peer connection
+                initializePeerConnection();
+            }).catch(error => {
+                console.error('Error accessing media devices.', error);
+            });
+
+            function initializePeerConnection() {
+                peerConnection = new RTCPeerConnection();
+
+                // Add all local tracks to the peer connection
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+
+                // Listen for remote track
+                peerConnection.ontrack = event => {
+                    remoteVideo.srcObject = event.streams[0];
+                };
+
+                // Handle ICE candidates
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate) {
+                        console.log('Sending ICE candidate', event.candidate);
+                        socket.emit('signal', { 
+                            type: 'ice-candidate', 
+                            candidate: event.candidate 
+                        });
+                    }
+                };
+
+                // Create offer if this is the initiating peer
+                if (location.hash === '#init') {
+                        console.log('setting connection')
+                        peerConnection.createOffer().then(offer => {
+                        return peerConnection.setLocalDescription(offer);
+                    }).then(() => {
+                        // Send the offer to the remote peer through the signaling server
+                        socket.emit('signal', { 
+                            type: 'offer', 
+                            offer: peerConnection.localDescription 
+                        });
+                    }).catch(console.error);
+                }
+            }
+
+            // Listen for signaling data from the server
+            socket.on('signal', data => {
+                console.log('recieve signal...')
+                if (data.type === 'offer' && location.hash !== '#init') {
+                    console.log('client setup')
+                    peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer)).then(() => {
+                        // Create an answer
+                        return peerConnection.createAnswer();
+                    }).then(answer => {
+                        return peerConnection.setLocalDescription(answer);
+                    }).then(() => {
+                        socket.emit('signal', { 
+                            type: 'answer', 
+                            answer: peerConnection.localDescription 
+                        });
+                    }).catch(console.error)
+
+                } else if (data.type === 'answer' && location.hash === '#init') {
+                    console.log('main client setup')
+                    peerConnection.setRemoteDescription(
+                        new RTCSessionDescription(data.answer)
+                    ).catch(console.error)
+
+                } else if (data.type === 'ice-candidate') {
+                    console.log('client setup ice-candidate')
+                    const candidate = new RTCIceCandidate(data.candidate);
+                    peerConnection.addIceCandidate(candidate).catch(console.error);
+                }
+            });
+
+        </script> -->
+    </div>
+</body>
+</html>
